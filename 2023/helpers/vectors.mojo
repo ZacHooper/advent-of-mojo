@@ -1,3 +1,6 @@
+from utils.vector import InlinedFixedVector
+
+
 fn max_index(calories: DynamicVector[Int]) -> Int:
     var max_calories = 0
     var max_elf = 0
@@ -6,3 +9,10 @@ fn max_index(calories: DynamicVector[Int]) -> Int:
             max_calories = calories[i]
             max_elf = i
     return max_elf
+
+
+fn contains[width: Int](vec: InlinedFixedVector[Int, width], val: Int) -> Bool:
+    for i in range(len(vec)):
+        if vec[i] == val:
+            return True
+    return False
