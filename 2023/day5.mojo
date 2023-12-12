@@ -1,18 +1,5 @@
 from utils.vector import InlinedFixedVector
 
-# fn print_map(ranges: DynamicVector[Range]):
-#     var output: String = "Seed to Soil Map:\n"
-#         for i in range(len(self.ranges)):
-#             output += str(self.ranges[i])
-#             if i < len(self.ranges) - 1:
-#                 output += "\n"
-#         output += "\nOtherwise, the value is unchanged."
-#         return output
-#     for i in range(len(map)):
-#         for j in range(len(map[i])):
-#             print(map[i][j], terminator: "")
-#         print("")
-
 
 @value
 struct StringDynamicVector[T: CollectionElement](Stringable):
@@ -46,18 +33,43 @@ struct StringDynamicVector[T: CollectionElement](Stringable):
         return output
 
 
+# Part 1 Seeds
+# @value
+# struct Seeds(Stringable):
+#     var seeds: InlinedFixedVector[Int, 4]
+
+#     fn __init__(inout self, text: String) raises:
+#         # Parse the seed values
+#         let just_numbers = text.replace("seeds: ", "")
+#         let split_numbers = just_numbers.split(" ")
+#         self.seeds = InlinedFixedVector[Int, 4](len(split_numbers))
+#         for i in range(len(split_numbers)):
+#             let number = atol(split_numbers[i])
+#             self.seeds.append(number)
+
+#     fn __str__(self) -> String:
+#         var output: String = "Seeds: "
+#         for i in range(len(self.seeds)):
+#             output += str(self.seeds[i])
+#             if i < len(self.seeds) - 1:
+#                 output += ", "
+#         return output
+
+
+# Part 2 Seeds
 @value
 struct Seeds(Stringable):
-    var seeds: InlinedFixedVector[Int, 4]
+    var seeds: DynamicVector[SeedRange]
 
     fn __init__(inout self, text: String) raises:
         # Parse the seed values
         let just_numbers = text.replace("seeds: ", "")
         let split_numbers = just_numbers.split(" ")
-        self.seeds = InlinedFixedVector[Int, 4](len(split_numbers))
-        for i in range(len(split_numbers)):
-            let number = atol(split_numbers[i])
-            self.seeds.append(number)
+        self.seeds = DynamicVector[SeedRange]()
+        for i in range(0, len(split_numbers), 2):
+            let min = atol(split_numbers[i])
+            let range = atol(split_numbers[i + 1])
+            self.seeds.push_back(SeedRange(min, min + range, 0))
 
     fn __str__(self) -> String:
         var output: String = "Seeds: "
@@ -66,6 +78,32 @@ struct Seeds(Stringable):
             if i < len(self.seeds) - 1:
                 output += ", "
         return output
+
+
+@value
+struct SeedRange(Stringable, CollectionElement):
+    var min: Int
+    var max: Int
+    var range: Int
+    var map_step: Int
+
+    fn __init__(inout self, min: Int, max: Int, map_step: Int):
+        self.min = min
+        self.max = max
+        self.range = max - min
+        self.map_step = map_step
+
+    fn __init__(inout self, existing_range: SeedRange, map_step: Int):
+        """
+        Create a new seed range from an existing one but with an updated map step.
+        """
+        self.min = existing_range.min
+        self.max = existing_range.max
+        self.range = existing_range.range
+        self.map_step = map_step
+
+    fn __str__(self) -> String:
+        return str(self.min) + " -> " + str(self.max) + " (" + str(self.map_step) + ")"
 
 
 @value
@@ -94,7 +132,7 @@ struct Range(Stringable, CollectionElement):
     fn contains(self, value: Int) -> Bool:
         return value >= self.source_min and value <= self.source_max
 
-    fn get_source(self, value: Int) -> Int:
+    fn get_destination(self, value: Int) -> Int:
         """
         If the value is in the range then apply the transformation. Otherwise, return the value.
         """
@@ -139,11 +177,81 @@ struct Map(Stringable):
         output += "\nOtherwise, the value is unchanged."
         return output
 
-    fn get_source(self, value: Int) -> Int:
+    fn get_destination(self, value: Int) -> Int:
+        """
+        Given an exact seed value, convert it.
+        """
         for i in range(len(self.ranges)):
             if self.ranges[i].contains(value):
-                return self.ranges[i].get_source(value)
+                return self.ranges[i].get_destination(value)
         return value
+
+    fn get_destination(self, seed_range: SeedRange) -> DynamicVector[SeedRange]:
+        """
+        Given a seed range check if it's inside any of the source ranges.
+        If it's not then split the seed range.
+        """
+        var result = DynamicVector[SeedRange]()
+        for i in range(len(self.ranges)):
+            # If entire seed in range return new seed with min & max values converted
+            if self.ranges[i].contains(seed_range.min) and self.ranges[i].contains(
+                seed_range.max
+            ):
+                let new_min = self.ranges[i].get_destination(seed_range.min)
+                let new_max = self.ranges[i].get_destination(seed_range.max)
+                result.push_back(SeedRange(new_min, new_max, seed_range.map_step + 1))
+                return result
+
+            # If Minimum in range but max isn't split the range.
+            if self.ranges[i].contains(seed_range.min):
+                # seed range inside range
+                let inside_min = self.ranges[i].get_destination(seed_range.min)
+                let inside_max = self.ranges[i].get_destination(
+                    self.ranges[i].source_max
+                )
+                let inside_seed_range = SeedRange(
+                    inside_min, inside_max, seed_range.map_step + 1
+                )
+                result.push_back(inside_seed_range)
+
+                # seed outside range
+                let outside_min = self.ranges[i].source_max + 1
+                let outside_max = seed_range.max
+                # Keep map step the same so that this seed range attempts to run through this map again with
+                # update values
+                let outside_seed_range = SeedRange(
+                    outside_min, outside_max, seed_range.map_step
+                )
+                result.push_back(outside_seed_range)
+                return result
+
+            # If Maximum in range but min isn't split the range.
+            if self.ranges[i].contains(seed_range.max):
+                # seed range inside range
+                let inside_min = self.ranges[i].get_destination(
+                    self.ranges[i].source_min
+                )
+                let inside_max = self.ranges[i].get_destination(seed_range.max)
+                let inside_seed_range = SeedRange(
+                    inside_min, inside_max, seed_range.map_step + 1
+                )
+                result.push_back(inside_seed_range)
+
+                # seed outside range
+                let outside_min = seed_range.min
+                let outside_max = self.ranges[i].source_min - 1
+                # Keep map step the same so that this seed range attempts to run through this map again with
+                # update values
+                let outside_seed_range = SeedRange(
+                    outside_min, outside_max, seed_range.map_step
+                )
+                result.push_back(outside_seed_range)
+                return result
+
+        # If no match found return original seed range
+        let new_seed_range = SeedRange(seed_range, seed_range.map_step + 1)
+        result.push_back(new_seed_range)
+        return result
 
 
 fn get_location_of_seed(
@@ -160,13 +268,13 @@ fn get_location_of_seed(
     """
     Converts the seed value through each of the maps to get the location value.
     """
-    let soil = seed_to_soil_map.get_source(seed)
-    let fertilizer = seed_to_fertilizer_map.get_source(soil)
-    let water = fertilizer_to_water_map.get_source(fertilizer)
-    let light = water_to_light_map.get_source(water)
-    let temperature = light_to_temperature_map.get_source(light)
-    let humidity = temperature_to_humidity_map.get_source(temperature)
-    let location = humidity_to_location_map.get_source(humidity)
+    let soil = seed_to_soil_map.get_destination(seed)
+    let fertilizer = seed_to_fertilizer_map.get_destination(soil)
+    let water = fertilizer_to_water_map.get_destination(fertilizer)
+    let light = water_to_light_map.get_destination(water)
+    let temperature = light_to_temperature_map.get_destination(light)
+    let humidity = temperature_to_humidity_map.get_destination(temperature)
+    let location = humidity_to_location_map.get_destination(humidity)
     if print_conversion:
         print(
             "Seed: ",
@@ -189,6 +297,12 @@ fn get_location_of_seed(
     return location
 
 
+@value
+struct QueueItem(CollectionElement):
+    var range: SeedRange
+    var starting_map: Int
+
+
 fn main() raises:
     # Open and Parse the File
     let input: String
@@ -209,19 +323,65 @@ fn main() raises:
     let humidity_to_location_map = Map(sections[7])
 
     var lowest_location_number: Int = 0
-    for i in range(len(seeds.seeds)):
-        let seed = seeds.seeds[i]
-        let location = get_location_of_seed(
-            seed,
-            seed_to_soil_map,
-            seed_to_fertilizer_map,
-            fertilizer_to_water_map,
-            water_to_light_map,
-            light_to_temperature_map,
-            temperature_to_humidity_map,
-            humidity_to_location_map,
-        )
-        if lowest_location_number == 0 or location < lowest_location_number:
-            lowest_location_number = location
+
+    var queue = seeds.seeds
+
+    while len(queue) > 0:
+        # Get first item in queue
+        let seed_range = queue.pop_back()
+        print(seed_range)
+
+        # Process through right map
+        var processed_seed_ranges = DynamicVector[SeedRange]()
+        if seed_range.map_step == 0:
+            processed_seed_ranges = seed_to_soil_map.get_destination(seed_range)
+        elif seed_range.map_step == 1:
+            processed_seed_ranges = seed_to_fertilizer_map.get_destination(seed_range)
+        elif seed_range.map_step == 2:
+            processed_seed_ranges = fertilizer_to_water_map.get_destination(seed_range)
+        elif seed_range.map_step == 3:
+            processed_seed_ranges = water_to_light_map.get_destination(seed_range)
+        elif seed_range.map_step == 4:
+            processed_seed_ranges = light_to_temperature_map.get_destination(seed_range)
+        elif seed_range.map_step == 5:
+            processed_seed_ranges = temperature_to_humidity_map.get_destination(
+                seed_range
+            )
+        elif seed_range.map_step == 6:
+            processed_seed_ranges = humidity_to_location_map.get_destination(seed_range)
+        else:
+            # Get the lowest number minimum range value from the ranges returned
+            if seed_range.min < lowest_location_number or lowest_location_number == 0:
+                print(
+                    "Changing lowest number: "
+                    + str(lowest_location_number)
+                    + " -> "
+                    + str(seed_range.min)
+                )
+                lowest_location_number = seed_range.min
+            continue
+
+        for i in range(len(processed_seed_ranges)):
+            queue.push_back(processed_seed_ranges[i])
+        print("Queue Length: " + str(len(queue)))
+
+    # Part 1
+    # while len(seeds.seeds) > 0:
+    #     pass
+
+    # for i in range(len(seeds.seeds)):
+    #     let seed = seeds.seeds[i]
+    #     let location = get_location_of_seed(
+    #         seed,
+    #         seed_to_soil_map,
+    #         seed_to_fertilizer_map,
+    #         fertilizer_to_water_map,
+    #         water_to_light_map,
+    #         light_to_temperature_map,
+    #         temperature_to_humidity_map,
+    #         humidity_to_location_map,
+    #     )
+    #     if lowest_location_number == 0 or location < lowest_location_number:
+    #         lowest_location_number = location
 
     print(lowest_location_number)
