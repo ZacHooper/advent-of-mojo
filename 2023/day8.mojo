@@ -42,11 +42,12 @@ fn get_next_root(
     """
     Given a root, directions, and a hash table, return the next root.
     """
+    let node = hash_table[root]
     if direction == "L":
-        return left(hash_table[root])
+        return left(node)
     elif direction == "R":
-        return left(hash_table[root])
-    return root
+        return right(node)
+    return ""
 
 
 fn main() raises:
@@ -68,18 +69,18 @@ fn main() raises:
 
     # Step through the RL instructions. Loop around until we reach ZZZ.
     # PART 1
-    # var root: String = "AAA"
-    # var steps = 0
-    # while root != "ZZZ":
-    #     for idx in range(len(directions)):
-    #         let node = hash_table[root]
-    #         if directions[idx] == "L":
-    #             root = left(node)
-    #         elif directions[idx] == "R":
-    #             root = right(node)
-    #         steps += 1
+    var root: String = "AAA"
+    var steps = 0
+    while root != "ZZZ":
+        for idx in range(len(directions)):
+            let node = hash_table[root]
+            if directions[idx] == "L":
+                root = left(node)
+            elif directions[idx] == "R":
+                root = right(node)
+            steps += 1
 
-    # print("Part 1: " + str(steps))
+    print("Part 1: " + str(steps))
 
     # PART 2
     # Find the roots [GNA, FCA, AAA, MXA, VVA, XHA]
@@ -89,24 +90,16 @@ fn main() raises:
         if key[2] == "A":
             roots.push_back(key)
 
-    print(roots)
-
     var step_counts = DynamicVector[Int]()
 
     for i in range(roots.__len__()):
-        print("Root: " + roots[i])
         var temp_count = 0
         var temp_root = roots[i]
         while temp_root[2] != "Z":
             for j in range(len(directions)):
-                let node = hash_table[temp_root]
-                if directions[j] == "L":
-                    temp_root = left(node)
-                elif directions[j] == "R":
-                    temp_root = right(node)
-                # temp_root = next_root
+                temp_root = get_next_root(temp_root, directions[j], hash_table)
                 temp_count += 1
-        print("Count: " + str(temp_count))
+        print("Root: " + roots[i] + " Count: " + str(temp_count))
         step_counts.push_back(temp_count)
 
     # With the step counts for each root we now need to find the LCM
@@ -116,4 +109,4 @@ fn main() raises:
         lcm_steps = lcm(lcm_steps, step_counts[i])
 
     # print("Part 2: " + str(step_counts))
-    print("Part 2: " + str(lcm_steps))
+    print("Part 2 LCM: " + str(lcm_steps))
