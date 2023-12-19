@@ -1,36 +1,6 @@
 from utils.vector import InlinedFixedVector
-
-
-@value
-struct StringDynamicVector[T: CollectionElement](Stringable):
-    var data: DynamicVector[String]
-
-    fn __init__(inout self):
-        self.data = DynamicVector[String]()
-
-    fn __init__(inout self, data: DynamicVector[String]):
-        self.data = data
-
-    fn push_back(inout self, value: String):
-        self.data.push_back(value)
-
-    fn __getitem__(self, index: Int) -> T:
-        return self.data[index]
-
-    fn __setitem__(inout self, index: Int, value: String):
-        self.data[index] = value
-
-    fn __len__(self) -> Int:
-        return self.data.__len__()
-
-    fn __str__(self) -> String:
-        var output: String = "["
-        for i in range(len(self.data)):
-            output += str(self.data[i])
-            if i < len(self.data) - 1:
-                output += ", "
-        output += "]"
-        return output
+from helpers.vectors import StringDynamicVector
+from time import time
 
 
 # Part 1 Seeds
@@ -305,6 +275,7 @@ struct QueueItem(CollectionElement):
 
 fn main() raises:
     # Open and Parse the File
+    let start = time.now()
     let input: String
     let filename = "inputs/day5/input.txt"
     with open(filename, "r") as f:
@@ -329,7 +300,7 @@ fn main() raises:
     while len(queue) > 0:
         # Get first item in queue
         let seed_range = queue.pop_back()
-        print(seed_range)
+        # print(seed_range)
 
         # Process through right map
         var processed_seed_ranges = DynamicVector[SeedRange]()
@@ -363,7 +334,7 @@ fn main() raises:
 
         for i in range(len(processed_seed_ranges)):
             queue.push_back(processed_seed_ranges[i])
-        print("Queue Length: " + str(len(queue)))
+        # print("Queue Length: " + str(len(queue)))
 
     # Part 1
     # while len(seeds.seeds) > 0:
@@ -385,3 +356,5 @@ fn main() raises:
     #         lowest_location_number = location
 
     print(lowest_location_number)
+
+    print("Time Taken: " + str((time.now() - start) / 1000000))

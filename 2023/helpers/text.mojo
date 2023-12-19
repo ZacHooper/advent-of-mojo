@@ -5,7 +5,7 @@ fn split_string(input: String, sep: String) -> DynamicVector[StringRef]:
     var start = 0
     var end = 0
     while end < input_len:
-        let current_char = String(input)[end:end+sep_len]
+        let current_char = String(input)[end : end + sep_len]
         if current_char == sep:
             var upper_bound: Int = end
             if sep_len > 1:
@@ -22,20 +22,29 @@ fn split_string(input: String, sep: String) -> DynamicVector[StringRef]:
     output.push_back(StringRef(sub_point))
     return output
 
+
 fn strip_string(input: String) -> String:
     let input_len = len(input)
     var start = 0
     var end = input_len
     while start < input_len:
-        let current_char = String(input)[start:start+1]
+        let current_char = String(input)[start : start + 1]
         if current_char == " " or current_char == "\n" or current_char == "\t":
             start += 1
         else:
             break
     while end > 0:
-        let current_char = String(input)[end-1:end]
+        let current_char = String(input)[end - 1 : end]
         if current_char == " " or current_char == "\n" or current_char == "\t":
             end -= 1
         else:
             break
     return String(input)[start:end]
+
+
+fn is_digit(char: String) -> Bool:
+    let nums = "0123456789"
+    for num in range(len(nums)):
+        if char == num:
+            return True
+    return False
